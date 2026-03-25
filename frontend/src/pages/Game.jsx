@@ -27,7 +27,12 @@ export default function Game() {
   const [myTrades, setMyTrades] = useState(0)
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${roomId}/${playerId}`)
+
+    const wsUrl = import.meta.env.VITE_API_URL
+        ? import.meta.env.VITE_API_URL.replace('https://', 'wss://').replace('http://', 'ws://')
+        : 'ws://127.0.0.1:8000'
+    const ws = new WebSocket(`${wsUrl}/ws/${roomId}/${playerId}`)
+                   
     wsRef.current = ws
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
