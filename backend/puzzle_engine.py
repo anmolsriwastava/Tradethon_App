@@ -1,8 +1,8 @@
-import google.generativeai as genai
 import json
 import random
 import os
 from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()
 
@@ -45,14 +45,13 @@ FALLBACK_PUZZLES = [
 ]
 
 
-def generate_puzzle_with_gemini() -> dict:
+def generate_puzzle_with_groq() -> dict:
     try:
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             raise Exception("No API key found")
         
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        client = Groq(api_key=api_key)
         
         prompt = """Generate a probability trading puzzle for a quantitative finance game.
 
@@ -71,8 +70,16 @@ Rules:
 - true_fair_value must be mathematically correct
 - Keep description under 60 words"""
         
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        raw = response.choices[0].message.content.strip()
         
         # Clean up response if it has markdown
         if raw.startswith("```json"):
@@ -86,13 +93,13 @@ Rules:
         return puzzle
         
     except Exception as e:
-        print(f"Gemini API failed, using fallback puzzle: {e}")
+        print(f"Groq API failed, using fallback puzzle: {e}")
         return random.choice(FALLBACK_PUZZLES)
 
 
 def get_puzzle() -> dict:
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         print("No API key found, using fallback puzzle")
         return random.choice(FALLBACK_PUZZLES)
-    return generate_puzzle_with_gemini()
+    return generate_puzzle_with_groq()

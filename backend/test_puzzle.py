@@ -1,9 +1,6 @@
 from puzzle_engine import get_puzzle
 
-print("Generating puzzle...")
 puzzle = get_puzzle()
-
-print("\n--- PUZZLE ---")
 print("Title:", puzzle["title"])
 print("Description:", puzzle["description"])
 print("True Fair Value:", puzzle["true_fair_value"])
