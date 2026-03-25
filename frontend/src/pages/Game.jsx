@@ -31,6 +31,7 @@ export default function Game() {
     const wsUrl = import.meta.env.VITE_API_URL
         ? import.meta.env.VITE_API_URL.replace('https://', 'wss://').replace('http://', 'ws://')
         : 'ws://127.0.0.1:8000'
+    
     const ws = new WebSocket(`${wsUrl}/ws/${roomId}/${playerId}`)
                    
     wsRef.current = ws
@@ -95,7 +96,10 @@ export default function Game() {
     try {
       await axios.post(`${API}/room/${roomId}/start`)
       setGameStarted(true)
-    } catch (e) {}
+      setGameState('active')
+    } catch (e) {
+      console.log('Start error:', e)
+    }
   }
 
   return (
