@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import axios from 'axios'
 
-const API = 'http://127.0.0.1:8000'
+const API = 'https://tradethon-backend.onrender.com'
 
 export default function TradePanel({ roomId, playerId, onTrade }) {
   const [side, setSide] = useState('buy')

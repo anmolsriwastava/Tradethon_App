@@ -6,7 +6,7 @@ import TradePanel from '../components/TradePanel'
 import Leaderboard from '../components/Leaderboard'
 import PuzzleDisplay from '../components/PuzzleDisplay'
 
-const API = 'http://127.0.0.1:8000'
+const API = 'https://tradethon-backend.onrender.com'
 
 export default function Game() {
   const { roomId, playerId } = useParams()
