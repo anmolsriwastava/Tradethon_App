@@ -9,7 +9,7 @@ import PuzzleDisplay from '../components/PuzzleDisplay'
 const API = 'https://tradethon-backend.onrender.com'
 
 export default function Game() {
-  const { roomId, playerId } = useParams()
+  const { roomId, playerId: urlPlayerId } = useParams()
   const navigate = useNavigate()
   const wsRef = useRef(null)
 
@@ -28,47 +28,59 @@ export default function Game() {
   const [copySuccess, setCopySuccess] = useState(false)
   const [players, setPlayers] = useState([])
   const [playerName, setPlayerName] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [actualPlayerId, setActualPlayerId] = useState(urlPlayerId)
+  const [joining, setJoining] = useState(true)
+  const [joinError, setJoinError] = useState('')
 
-  // Get player name from localStorage or prompt
+  // Step 1: Get player name (from localStorage or prompt)
   useEffect(() => {
     const storedName = localStorage.getItem('playerName')
     if (storedName) {
       setPlayerName(storedName)
-      setLoading(false)
     } else {
-      const name = prompt('Enter your name to join:')
+      const name = prompt('Enter your name to join this game:')
       if (name) {
         localStorage.setItem('playerName', name)
         setPlayerName(name)
-        setLoading(false)
       } else {
         navigate('/')
       }
     }
   }, [navigate])
 
-  // Join the room when player name is set
+  // Step 2: Join the room if we have a name but no playerId
   useEffect(() => {
-    if (!playerName || loading) return
+    if (!playerName || !roomId) return
+    if (actualPlayerId) {
+      // Already have a playerId, no need to join
+      setJoining(false)
+      return
+    }
     
     async function joinRoom() {
       try {
-        await axios.post(`${API}/room/${roomId}/join`, {
+        setJoinError('')
+        const response = await axios.post(`${API}/room/${roomId}/join`, {
           player_name: playerName
         })
-      } catch (e) {
-        console.log('Join error:', e)
+        setActualPlayerId(response.data.player_id)
+        setJoining(false)
+      } catch (err) {
+        console.error('Join error:', err)
+        setJoinError('Failed to join room. Room may not exist.')
+        setTimeout(() => navigate('/'), 2000)
       }
     }
-    joinRoom()
-  }, [playerName, roomId, loading])
-
-  // WebSocket and polling
-  useEffect(() => {
-    if (loading) return
     
-    const ws = new WebSocket(`wss://tradethon-backend.onrender.com/ws/${roomId}/${playerId}`)
+    joinRoom()
+  }, [playerName, roomId, actualPlayerId, navigate])
+
+  // Step 3: Set up WebSocket and polling once we have playerId
+  useEffect(() => {
+    if (joining || !actualPlayerId || !roomId) return
+    
+    // WebSocket connection
+    const ws = new WebSocket(`wss://tradethon-backend.onrender.com/ws/${roomId}/${actualPlayerId}`)
     wsRef.current = ws
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
@@ -76,23 +88,26 @@ export default function Game() {
     }
     ws.onerror = (e) => console.log('WebSocket error:', e)
     
+    // Poll for updates
     const pollInterval = setInterval(async () => {
       try {
-        const res = await axios.get(`${API}/room/${roomId}/book`)
-        setBook(res.data)
+        const bookRes = await axios.get(`${API}/room/${roomId}/book`)
+        setBook(bookRes.data)
         
         const playersRes = await axios.get(`${API}/room/${roomId}/players`)
         if (playersRes.data && playersRes.data.players) {
           setPlayers(playersRes.data.players)
         }
-      } catch (e) {}
+      } catch (e) {
+        console.log('Poll error:', e)
+      }
     }, 2000)
     
     return () => {
       ws.close()
       clearInterval(pollInterval)
     }
-  }, [roomId, playerId, loading])
+  }, [roomId, actualPlayerId, joining])
 
   useEffect(() => {
     if (timeLeft <= 0) return
@@ -121,7 +136,7 @@ export default function Game() {
       setRoundResult(data)
       setLeaderboard(data.leaderboard)
       setTimeLeft(0)
-      const myRoundPnl = data.round_pnl[playerId] || 0
+      const myRoundPnl = data.round_pnl[actualPlayerId] || 0
       setMyPnl(prev => prev + myRoundPnl)
     }
     if (data.event === 'game_over') {
@@ -151,7 +166,23 @@ export default function Game() {
     setTimeout(() => setCopySuccess(false), 2000)
   }
 
-  if (loading) {
+  // Loading states
+  if (joinError) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0a0c15',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ef4444'
+      }}>
+        {joinError}<br />Redirecting...
+      </div>
+    )
+  }
+
+  if (joining || !actualPlayerId) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -161,7 +192,7 @@ export default function Game() {
         justifyContent: 'center',
         color: '#f1f5f9'
       }}>
-        Loading...
+        Joining room...
       </div>
     )
   }
@@ -193,7 +224,7 @@ export default function Game() {
         </h1>
         <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#94a3b8' }}>
           <span>ROOM: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{roomId}</span></span>
-          <span>ID: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{playerId}</span></span>
+          <span>ID: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{actualPlayerId?.slice(0, 8)}</span></span>
           <span>PnL: <span style={{ color: myPnl >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
             {myPnl >= 0 ? '+' : ''}{myPnl.toFixed(2)}
           </span></span>
@@ -222,8 +253,21 @@ export default function Game() {
             padding: '32px'
           }}>
             <p style={{ color: '#94a3b8', marginBottom: '16px' }}>
-              Share room code <span style={{ color: '#3b82f6', fontWeight: '600' }}>{roomId}</span> with friends
+              Share this link with friends:
             </p>
+            
+            <div style={{
+              background: '#0f172a',
+              padding: '12px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              wordBreak: 'break-all',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              color: '#3b82f6'
+            }}>
+              {`${window.location.origin}/game/${roomId}`}
+            </div>
             
             <button
               onClick={copyRoomLink}
@@ -240,12 +284,12 @@ export default function Game() {
                 width: '100%'
               }}
             >
-              📋 COPY ROOM LINK
+              📋 COPY LINK
             </button>
             
             {copySuccess && (
               <p style={{ color: '#10b981', fontSize: '13px', marginBottom: '24px' }}>
-                ✓ Link copied! Share with friends
+                ✓ Link copied!
               </p>
             )}
             
@@ -273,7 +317,7 @@ export default function Game() {
                     }}>
                       <span style={{ color: '#10b981', fontSize: '14px' }}>●</span>
                       <span style={{ color: '#f1f5f9', fontSize: '13px' }}>{p.name}</span>
-                      {p.id === playerId && (
+                      {p.id === actualPlayerId && (
                         <span style={{
                           background: '#3b82f6',
                           color: 'white',
@@ -372,7 +416,7 @@ export default function Game() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <TradePanel
               roomId={roomId}
-              playerId={playerId}
+              playerId={actualPlayerId}
               onTrade={(book, traded) => {
                 setBook(book)
                 if (traded) setMyTrades(prev => prev + 1)
