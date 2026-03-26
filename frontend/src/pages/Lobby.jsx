@@ -12,30 +12,38 @@ export default function Lobby() {
   const [duration, setDuration] = useState(120)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [createdRoomId, setCreatedRoomId] = useState('')
+  const [createdRoom, setCreatedRoom] = useState(null) // Store room data before joining
   const [showCopySuccess, setShowCopySuccess] = useState(false)
 
-  async function createAndJoin() {
+  async function createRoom() {
     if (!playerName.trim()) return setError('Enter your name')
     setLoading(true)
     setError('')
-    setCreatedRoomId('')
     try {
       const room = await axios.post(`${API}/room/create`, {
         num_bots: numBots,
         round_duration: duration
       })
       const newRoomId = room.data.room_id
-      setCreatedRoomId(newRoomId)
-      
-      const player = await axios.post(`${API}/room/${newRoomId}/join`, {
-        player_name: playerName
-      })
-      navigate(`/game/${newRoomId}/${player.data.player_id}`)
+      setCreatedRoom({ roomId: newRoomId, playerName: playerName })
     } catch (e) {
       setError('Failed to create room')
     }
     setLoading(false)
+  }
+
+  async function joinCreatedRoom() {
+    if (!createdRoom) return
+    setLoading(true)
+    try {
+      const player = await axios.post(`${API}/room/${createdRoom.roomId}/join`, {
+        player_name: createdRoom.playerName
+      })
+      navigate(`/game/${createdRoom.roomId}/${player.data.player_id}`)
+    } catch (e) {
+      setError('Failed to join room')
+      setLoading(false)
+    }
   }
 
   async function joinRoom() {
@@ -55,7 +63,7 @@ export default function Lobby() {
   }
 
   function copyRoomLink() {
-    const link = `${window.location.origin}/game/${createdRoomId}`
+    const link = `${window.location.origin}/game/${createdRoom.roomId}`
     navigator.clipboard.writeText(link)
     setShowCopySuccess(true)
     setTimeout(() => setShowCopySuccess(false), 2000)
@@ -153,7 +161,7 @@ export default function Lobby() {
             </div>
           </div>
           <button
-            onClick={createAndJoin}
+            onClick={createRoom}
             disabled={loading}
             style={{
               width: '100%',
@@ -166,38 +174,63 @@ export default function Lobby() {
               cursor: 'pointer'
             }}
           >
-            {loading ? 'CREATING...' : 'CREATE & JOIN'}
+            {loading ? 'CREATING...' : 'CREATE ROOM'}
           </button>
-          
-          {/* Copy Room Link Button - Shows after room creation */}
-          {createdRoomId && (
-            <div style={{ marginTop: '12px' }}>
-              <button
-                onClick={copyRoomLink}
-                style={{
-                  width: '100%',
-                  background: '#334155',
-                  color: '#e2e8f0',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '10px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                📋 COPY ROOM LINK
-              </button>
-              {showCopySuccess && (
-                <p style={{ color: '#10b981', fontSize: '12px', marginTop: '8px', textAlign: 'center' }}>
-                  ✓ Link copied! Share with friends
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Join Room Section */}
+        {/* Show after room creation */}
+        {createdRoom && (
+          <div style={{
+            background: '#0f172a',
+            borderRadius: '16px',
+            padding: '20px',
+            marginBottom: '20px',
+            border: '1px solid #3b82f6'
+          }}>
+            <p style={{ color: '#10b981', fontWeight: '600', fontSize: '13px', marginBottom: '12px' }}>
+              ✓ ROOM CREATED: {createdRoom.roomId}
+            </p>
+            <button
+              onClick={copyRoomLink}
+              style={{
+                width: '100%',
+                background: '#334155',
+                color: '#e2e8f0',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '10px',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                marginBottom: '12px'
+              }}
+            >
+              📋 COPY INVITE LINK
+            </button>
+            {showCopySuccess && (
+              <p style={{ color: '#10b981', fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
+                ✓ Link copied! Share with friends
+              </p>
+            )}
+            <button
+              onClick={joinCreatedRoom}
+              style={{
+                width: '100%',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              JOIN GAME →
+            </button>
+          </div>
+        )}
+
+        {/* Join Existing Room Section */}
         <div style={{
           background: '#0f172a',
           borderRadius: '16px',
