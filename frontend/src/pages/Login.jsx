@@ -17,11 +17,21 @@ export default function Login() {
 
     let result
     if (isSignUp) {
-      result = await supabase.auth.signUp({ email, password })
+      result = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: { name: email.split('@')[0] }
+        }
+      })
       if (!result.error) {
-        setError('Check your email to confirm your account!')
-        setLoading(false)
-        return
+        // Auto sign in after sign up
+        const loginResult = await supabase.auth.signInWithPassword({ email, password })
+        if (!loginResult.error) {
+          localStorage.setItem('playerName', email.split('@')[0])
+          navigate('/lobby')
+          return
+        }
       }
     } else {
       result = await supabase.auth.signInWithPassword({ email, password })
@@ -32,17 +42,24 @@ export default function Login() {
       }
     }
 
-    if (result.error) {
+    if (result && result.error) {
       setError(result.error.message)
     }
     setLoading(false)
   }
 
   async function handleGoogleLogin() {
-    await supabase.auth.signInWithOAuth({
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + '/lobby' }
+      options: { 
+        redirectTo: 'https://quantdrill.onrender.com/lobby'
+      }
     })
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+    }
   }
 
   function handleGuestMode() {
@@ -138,6 +155,7 @@ export default function Login() {
 
         <button
           onClick={handleGoogleLogin}
+          disabled={loading}
           style={{
             width: '100%',
             background: '#1f2937',
@@ -155,6 +173,7 @@ export default function Login() {
 
         <button
           onClick={handleGuestMode}
+          disabled={loading}
           style={{
             width: '100%',
             background: '#334155',
@@ -173,7 +192,10 @@ export default function Login() {
         <p style={{ textAlign: 'center', fontSize: '13px', color: '#64748b' }}>
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              setError('')
+            }}
             style={{
               background: 'none',
               border: 'none',
