@@ -15,36 +15,47 @@ export default function Login() {
     setLoading(true)
     setError('')
 
-    let result
     if (isSignUp) {
-      result = await supabase.auth.signUp({ 
+      // Sign Up
+      const { error: signUpError } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: { name: email.split('@')[0] }
         }
       })
-      if (!result.error) {
-        // Auto sign in after sign up
-        const loginResult = await supabase.auth.signInWithPassword({ email, password })
-        if (!loginResult.error) {
-          localStorage.setItem('playerName', email.split('@')[0])
-          navigate('/lobby')
-          return
-        }
-      }
-    } else {
-      result = await supabase.auth.signInWithPassword({ email, password })
-      if (!result.error) {
-        localStorage.setItem('playerName', result.data.user.email.split('@')[0])
-        navigate('/lobby')
+      
+      if (signUpError) {
+        setError(signUpError.message)
+        setLoading(false)
         return
       }
+      
+      // Auto sign in after sign up
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+      
+      localStorage.setItem('playerName', email.split('@')[0])
+      navigate('/lobby')
+      
+    } else {
+      // Sign In
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      
+      if (signInError) {
+        setError(signInError.message)
+        setLoading(false)
+        return
+      }
+      
+      localStorage.setItem('playerName', data.user.email.split('@')[0])
+      navigate('/lobby')
     }
-
-    if (result && result.error) {
-      setError(result.error.message)
-    }
+    
     setLoading(false)
   }
 
