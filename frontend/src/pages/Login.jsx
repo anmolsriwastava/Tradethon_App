@@ -1,144 +1,171 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { supabase } from '../lib/supabase'
 
-export default function Login() {
+const API = 'https://tradethon-backend.onrender.com'
+
+export default function Lobby() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [playerName, setPlayerName] = useState('')
+  const [roomId, setRoomId] = useState('')
+  const [numBots, setNumBots] = useState(10)
+  const [duration, setDuration] = useState(120)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  // CHECK IF USER IS LOGGED IN (for non-guest users)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        const isGuest = localStorage.getItem('playerName')?.startsWith('Guest_')
+        if (!isGuest) {
+          navigate('/')
+        }
+      }
+    }
+    checkSession()
+  }, [navigate])
+
+  // Load saved name from localStorage (Guest or logged-in user)
+  useEffect(() => {
+    const savedName = localStorage.getItem('playerName')
+    if (savedName) {
+      setPlayerName(savedName)
+    }
+  }, [])
+
+  async function createAndJoin() {
+    if (!playerName.trim()) return setError('Enter your name')
     setLoading(true)
     setError('')
-
-    if (isSignUp) {
-      // Sign Up (With email confirmation off, this automatically logs them in!)
-      const { data, error: signUpError } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          data: { name: email.split('@')[0] }
-        }
+    try {
+      const room = await axios.post(`${API}/room/create`, {
+        num_bots: numBots,
+        round_duration: duration
       })
+      const newRoomId = room.data.room_id
       
-      if (signUpError) {
-        setError(signUpError.message)
-        setLoading(false)
-        return
-      }
-      
-      localStorage.setItem('playerName', email.split('@')[0])
-      navigate('/lobby')
-      
-    } else {
-      // Sign In
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      
-      if (signInError) {
-        setError(signInError.message)
-        setLoading(false)
-        return
-      }
-      
-      localStorage.setItem('playerName', data.user.email.split('@')[0])
-      navigate('/lobby')
+      const player = await axios.post(`${API}/room/${newRoomId}/join`, {
+        player_name: playerName
+      })
+      navigate(`/game/${newRoomId}/${player.data.player_id}`)
+    } catch (e) {
+      setError('Failed to create room')
     }
-    
     setLoading(false)
   }
 
-  async function handleGoogleLogin() {
+  async function joinRoom() {
+    if (!playerName.trim()) return setError('Enter your name')
+    if (!roomId.trim()) return setError('Enter room ID')
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { 
-        redirectTo: 'https://quantdrill.onrender.com/lobby'
-      }
-    })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
+    setError('')
+    try {
+      const player = await axios.post(`${API}/room/${roomId}/join`, {
+        player_name: playerName
+      })
+      navigate(`/game/${roomId}/${player.data.player_id}`)
+    } catch (e) {
+      setError('Failed to join room')
     }
-  }
-
-  function handleGuestMode() {
-    const guestName = `Guest_${Math.floor(Math.random() * 10000)}`
-    localStorage.setItem('playerName', guestName)
-    navigate('/lobby')
+    setLoading(false)
   }
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0c15',
+      background: '#0f172a',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px'
+      padding: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       <div style={{
-        maxWidth: '400px',
+        maxWidth: '500px',
         width: '100%',
-        background: '#111827',
+        background: '#1e293b',
         borderRadius: '24px',
         padding: '40px',
-        border: '1px solid #1f2937'
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>
         <h1 style={{
-          fontSize: '28px',
+          fontSize: '36px',
           fontWeight: '700',
           color: '#3b82f6',
-          marginBottom: '8px',
-          textAlign: 'center'
+          marginBottom: '8px'
         }}>
           Tradethon
         </h1>
-        <p style={{ color: '#94a3b8', textAlign: 'center', marginBottom: '32px' }}>
-          {isSignUp ? 'Create an account' : 'Sign in to save your progress'}
+        <p style={{ color: '#94a3b8', marginBottom: '32px', fontSize: '14px' }}>
+          Quantitative Trading Simulation
         </p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{
-              width: '100%',
-              background: '#0f172a',
-              border: '1px solid #1f2937',
-              borderRadius: '10px',
-              padding: '12px',
-              color: '#f1f5f9',
-              marginBottom: '16px',
-              outline: 'none'
-            }}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            style={{
-              width: '100%',
-              background: '#0f172a',
-              border: '1px solid #1f2937',
-              borderRadius: '10px',
-              padding: '12px',
-              color: '#f1f5f9',
-              marginBottom: '24px',
-              outline: 'none'
-            }}
-            required
-          />
+        <input
+          placeholder="Your Name"
+          value={playerName}
+          onChange={e => setPlayerName(e.target.value)}
+          style={{
+            width: '100%',
+            background: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            color: '#f1f5f9',
+            fontSize: '14px',
+            marginBottom: '20px',
+            outline: 'none'
+          }}
+        />
 
+        {/* Create Room Section */}
+        <div style={{
+          background: '#0f172a',
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <p style={{ color: '#3b82f6', fontWeight: '600', fontSize: '13px', marginBottom: '16px' }}>
+            CREATE NEW ROOM
+          </p>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>BOTS</label>
+              <input
+                type="number"
+                value={numBots}
+                onChange={e => setNumBots(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  color: '#f1f5f9'
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>SECONDS / ROUND</label>
+              <input
+                type="number"
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  color: '#f1f5f9'
+                }}
+              />
+            </div>
+          </div>
           <button
-            type="submit"
+            onClick={createAndJoin}
             disabled={loading}
             style={{
               width: '100%',
@@ -148,74 +175,57 @@ export default function Login() {
               borderRadius: '10px',
               padding: '12px',
               fontWeight: '600',
-              cursor: 'pointer',
-              marginBottom: '12px'
+              cursor: 'pointer'
             }}
           >
-            {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            {loading ? 'CREATING...' : 'CREATE & JOIN'}
           </button>
-        </form>
+        </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          style={{
-            width: '100%',
-            background: '#1f2937',
-            color: '#e2e8f0',
-            border: '1px solid #334155',
-            borderRadius: '10px',
-            padding: '12px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            marginBottom: '12px'
-          }}
-        >
-          🚀 Sign in with Google
-        </button>
-
-        <button
-          onClick={handleGuestMode}
-          disabled={loading}
-          style={{
-            width: '100%',
-            background: '#334155',
-            color: '#e2e8f0',
-            border: '1px solid #475569',
-            borderRadius: '10px',
-            padding: '12px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            marginBottom: '16px'
-          }}
-        >
-          🎮 Continue as Guest
-        </button>
-
-        <p style={{ textAlign: 'center', fontSize: '13px', color: '#64748b' }}>
-          {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-          <button
-            onClick={() => {
-              setIsSignUp(!isSignUp)
-              setError('')
-            }}
+        {/* Join Room Section */}
+        <div style={{
+          background: '#0f172a',
+          borderRadius: '16px',
+          padding: '20px'
+        }}>
+          <p style={{ color: '#60a5fa', fontWeight: '600', fontSize: '13px', marginBottom: '16px' }}>
+            JOIN EXISTING ROOM
+          </p>
+          <input
+            placeholder="Room ID (e.g. 5C8D184D)"
+            value={roomId}
+            onChange={e => setRoomId(e.target.value.toUpperCase())}
             style={{
-              background: 'none',
+              width: '100%',
+              background: '#0f172a',
+              border: '1px solid #334155',
+              borderRadius: '10px',
+              padding: '12px',
+              color: '#f1f5f9',
+              marginBottom: '16px',
+              outline: 'none'
+            }}
+          />
+          <button
+            onClick={joinRoom}
+            disabled={loading}
+            style={{
+              width: '100%',
+              background: '#334155',
+              color: '#e2e8f0',
               border: 'none',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              marginLeft: '6px',
-              fontSize: '13px'
+              borderRadius: '10px',
+              padding: '12px',
+              fontWeight: '500',
+              cursor: 'pointer'
             }}
           >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
+            {loading ? 'JOINING...' : 'JOIN ROOM'}
           </button>
-        </p>
+        </div>
 
         {error && (
-          <p style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginTop: '16px' }}>
-            {error}
-          </p>
+          <p style={{ color: '#ef4444', fontSize: '13px', textAlign: 'center', marginTop: '16px' }}>{error}</p>
         )}
       </div>
     </div>
