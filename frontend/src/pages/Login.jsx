@@ -10,14 +10,19 @@ export default function Login() {
   const [error, setError] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
 
-  async function handleSubmit(e) {
+  
+      
+      localStorage.setItem('playerName', email.split('@')[0])
+      navigate('/lobby')
+      
+    async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     if (isSignUp) {
-      // Sign Up
-      const { error: signUpError } = await supabase.auth.signUp({ 
+      // Sign Up (With email confirmation off, this automatically logs them in!)
+      const { data, error: signUpError } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
@@ -27,14 +32,6 @@ export default function Login() {
       
       if (signUpError) {
         setError(signUpError.message)
-        setLoading(false)
-        return
-      }
-      
-      // Auto sign in after sign up
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) {
-        setError(signInError.message)
         setLoading(false)
         return
       }
