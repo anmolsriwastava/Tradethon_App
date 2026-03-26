@@ -18,16 +18,22 @@ export default function Login() {
     let result
     if (isSignUp) {
       result = await supabase.auth.signUp({ email, password })
+      if (!result.error) {
+        setError('Check your email to confirm your account!')
+        setLoading(false)
+        return
+      }
     } else {
       result = await supabase.auth.signInWithPassword({ email, password })
+      if (!result.error) {
+        localStorage.setItem('playerName', result.data.user.email.split('@')[0])
+        navigate('/lobby')
+        return
+      }
     }
 
     if (result.error) {
       setError(result.error.message)
-    } else {
-      // Save user email as player name
-      localStorage.setItem('playerName', result.data.user.email.split('@')[0])
-      navigate('/lobby')
     }
     setLoading(false)
   }
@@ -37,6 +43,12 @@ export default function Login() {
       provider: 'google',
       options: { redirectTo: window.location.origin + '/lobby' }
     })
+  }
+
+  function handleGuestMode() {
+    const guestName = `Guest_${Math.floor(Math.random() * 10000)}`
+    localStorage.setItem('playerName', guestName)
+    navigate('/lobby')
   }
 
   return (
@@ -66,7 +78,7 @@ export default function Login() {
           Tradethon
         </h1>
         <p style={{ color: '#94a3b8', textAlign: 'center', marginBottom: '32px' }}>
-          {isSignUp ? 'Create an account' : 'Sign in to continue'}
+          {isSignUp ? 'Create an account' : 'Sign in to save your progress'}
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -117,7 +129,7 @@ export default function Login() {
               padding: '12px',
               fontWeight: '600',
               cursor: 'pointer',
-              marginBottom: '16px'
+              marginBottom: '12px'
             }}
           >
             {loading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')}
@@ -135,10 +147,27 @@ export default function Login() {
             padding: '12px',
             fontWeight: '500',
             cursor: 'pointer',
-            marginBottom: '16px'
+            marginBottom: '12px'
           }}
         >
           🚀 Sign in with Google
+        </button>
+
+        <button
+          onClick={handleGuestMode}
+          style={{
+            width: '100%',
+            background: '#334155',
+            color: '#e2e8f0',
+            border: '1px solid #475569',
+            borderRadius: '10px',
+            padding: '12px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '16px'
+          }}
+        >
+          🎮 Continue as Guest
         </button>
 
         <p style={{ textAlign: 'center', fontSize: '13px', color: '#64748b' }}>

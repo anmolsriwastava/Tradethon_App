@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { supabase } from '../lib/supabase'
 
 const API = 'https://tradethon-backend.onrender.com'
 
@@ -14,19 +13,13 @@ export default function Lobby() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // CHECK IF USER IS LOGGED IN
+  // Load saved name from localStorage (Guest or logged-in user)
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        navigate('/')
-      } else {
-        // Auto-fill name from email
-        setPlayerName(user.email.split('@')[0])
-      }
+    const savedName = localStorage.getItem('playerName')
+    if (savedName) {
+      setPlayerName(savedName)
     }
-    checkUser()
-  }, [navigate])
+  }, [])
 
   async function createAndJoin() {
     if (!playerName.trim()) return setError('Enter your name')
@@ -95,18 +88,22 @@ export default function Lobby() {
           Quantitative Trading Simulation
         </p>
 
-        {/* Name display (read-only, from login) */}
-        <div style={{
-          background: '#0f172a',
-          border: '1px solid #334155',
-          borderRadius: '12px',
-          padding: '12px 16px',
-          marginBottom: '20px',
-          color: '#f1f5f9',
-          fontSize: '14px'
-        }}>
-          Playing as: <strong>{playerName || 'Loading...'}</strong>
-        </div>
+        <input
+          placeholder="Your Name"
+          value={playerName}
+          onChange={e => setPlayerName(e.target.value)}
+          style={{
+            width: '100%',
+            background: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            color: '#f1f5f9',
+            fontSize: '14px',
+            marginBottom: '20px',
+            outline: 'none'
+          }}
+        />
 
         {/* Create Room Section */}
         <div style={{
