@@ -27,8 +27,47 @@ export default function Game() {
   const [myTrades, setMyTrades] = useState(0)
   const [copySuccess, setCopySuccess] = useState(false)
   const [players, setPlayers] = useState([])
+  const [playerName, setPlayerName] = useState('')
+  const [loading, setLoading] = useState(true)
 
+  // Get player name from localStorage or prompt
   useEffect(() => {
+    const storedName = localStorage.getItem('playerName')
+    if (storedName) {
+      setPlayerName(storedName)
+      setLoading(false)
+    } else {
+      const name = prompt('Enter your name to join:')
+      if (name) {
+        localStorage.setItem('playerName', name)
+        setPlayerName(name)
+        setLoading(false)
+      } else {
+        navigate('/')
+      }
+    }
+  }, [navigate])
+
+  // Join the room when player name is set
+  useEffect(() => {
+    if (!playerName || loading) return
+    
+    async function joinRoom() {
+      try {
+        await axios.post(`${API}/room/${roomId}/join`, {
+          player_name: playerName
+        })
+      } catch (e) {
+        console.log('Join error:', e)
+      }
+    }
+    joinRoom()
+  }, [playerName, roomId, loading])
+
+  // WebSocket and polling
+  useEffect(() => {
+    if (loading) return
+    
     const ws = new WebSocket(`wss://tradethon-backend.onrender.com/ws/${roomId}/${playerId}`)
     wsRef.current = ws
     ws.onmessage = (e) => {
@@ -37,25 +76,23 @@ export default function Game() {
     }
     ws.onerror = (e) => console.log('WebSocket error:', e)
     
-    // Poll for players list and order book
     const pollInterval = setInterval(async () => {
       try {
         const res = await axios.get(`${API}/room/${roomId}/book`)
         setBook(res.data)
         
-        // Get players from game state
         const playersRes = await axios.get(`${API}/room/${roomId}/players`)
         if (playersRes.data && playersRes.data.players) {
           setPlayers(playersRes.data.players)
         }
       } catch (e) {}
-    }, 3000)
+    }, 2000)
     
     return () => {
       ws.close()
       clearInterval(pollInterval)
     }
-  }, [roomId, playerId])
+  }, [roomId, playerId, loading])
 
   useEffect(() => {
     if (timeLeft <= 0) return
@@ -112,6 +149,21 @@ export default function Game() {
     navigator.clipboard.writeText(link)
     setCopySuccess(true)
     setTimeout(() => setCopySuccess(false), 2000)
+  }
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0a0c15',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#f1f5f9'
+      }}>
+        Loading...
+      </div>
+    )
   }
 
   return (
@@ -173,7 +225,6 @@ export default function Game() {
               Share room code <span style={{ color: '#3b82f6', fontWeight: '600' }}>{roomId}</span> with friends
             </p>
             
-            {/* Copy Link Button */}
             <button
               onClick={copyRoomLink}
               style={{
@@ -198,7 +249,6 @@ export default function Game() {
               </p>
             )}
             
-            {/* Players List */}
             <div style={{
               borderTop: '1px solid #1f2937',
               paddingTop: '24px',
@@ -241,7 +291,6 @@ export default function Game() {
               </div>
             </div>
             
-            {/* Start Game Button */}
             {!gameStarted && (
               <button
                 onClick={startGame}
