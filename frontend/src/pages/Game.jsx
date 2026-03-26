@@ -26,6 +26,7 @@ export default function Game() {
   const [myPnl, setMyPnl] = useState(0)
   const [myTrades, setMyTrades] = useState(0)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [players, setPlayers] = useState([])
 
   useEffect(() => {
     const ws = new WebSocket(`wss://tradethon-backend.onrender.com/ws/${roomId}/${playerId}`)
@@ -36,10 +37,17 @@ export default function Game() {
     }
     ws.onerror = (e) => console.log('WebSocket error:', e)
     
+    // Poll for players list and order book
     const pollInterval = setInterval(async () => {
       try {
         const res = await axios.get(`${API}/room/${roomId}/book`)
         setBook(res.data)
+        
+        // Get players from game state
+        const playersRes = await axios.get(`${API}/room/${roomId}/players`)
+        if (playersRes.data && playersRes.data.players) {
+          setPlayers(playersRes.data.players)
+        }
       } catch (e) {}
     }, 3000)
     
@@ -152,32 +160,20 @@ export default function Game() {
 
       {/* Waiting Screen */}
       {gameState === 'waiting' && (
-        <div style={{ textAlign: 'center', marginTop: '80px' }}>
+        <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <div style={{
             background: '#111827',
             borderRadius: '16px',
             border: '1px solid #1f2937',
             maxWidth: '500px',
             margin: '0 auto',
-            padding: '40px'
+            padding: '32px'
           }}>
             <p style={{ color: '#94a3b8', marginBottom: '16px' }}>
-              Share this link with friends to join:
+              Share room code <span style={{ color: '#3b82f6', fontWeight: '600' }}>{roomId}</span> with friends
             </p>
             
-            <div style={{
-              background: '#0f172a',
-              padding: '12px 16px',
-              borderRadius: '12px',
-              marginBottom: '24px',
-              wordBreak: 'break-all',
-              fontFamily: 'monospace',
-              fontSize: '14px',
-              color: '#3b82f6'
-            }}>
-              {`${window.location.origin}/game/${roomId}`}
-            </div>
-            
+            {/* Copy Link Button */}
             <button
               onClick={copyRoomLink}
               style={{
@@ -185,52 +181,88 @@ export default function Game() {
                 color: 'white',
                 border: 'none',
                 borderRadius: '10px',
-                padding: '10px 20px',
+                padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: '600',
                 cursor: 'pointer',
-                marginBottom: '24px'
+                marginBottom: '24px',
+                width: '100%'
               }}
             >
-              📋 COPY LINK
+              📋 COPY ROOM LINK
             </button>
             
             {copySuccess && (
               <p style={{ color: '#10b981', fontSize: '13px', marginBottom: '24px' }}>
-                ✓ Link copied to clipboard!
+                ✓ Link copied! Share with friends
               </p>
             )}
             
+            {/* Players List */}
             <div style={{
               borderTop: '1px solid #1f2937',
               paddingTop: '24px',
-              marginTop: '8px'
+              marginBottom: '24px'
             }}>
               <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
-                Room Code: <span style={{ color: '#f1f5f9', fontFamily: 'monospace' }}>{roomId}</span>
+                Players in room ({players.length}):
               </p>
-              
-              {!gameStarted && (
-                <button
-                  onClick={startGame}
-                  style={{
-                    background: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '12px 32px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  START GAME
-                </button>
-              )}
-              {gameStarted && (
-                <p style={{ color: '#f59e0b' }}>Starting game...</p>
-              )}
+              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                {players.length === 0 ? (
+                  <p style={{ color: '#475569', fontSize: '13px' }}>Waiting for players to join...</p>
+                ) : (
+                  players.map((p, idx) => (
+                    <div key={idx} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 12px',
+                      background: '#0f172a',
+                      borderRadius: '8px',
+                      marginBottom: '6px'
+                    }}>
+                      <span style={{ color: '#10b981', fontSize: '14px' }}>●</span>
+                      <span style={{ color: '#f1f5f9', fontSize: '13px' }}>{p.name}</span>
+                      {p.id === playerId && (
+                        <span style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          marginLeft: 'auto'
+                        }}>
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
+            
+            {/* Start Game Button */}
+            {!gameStarted && (
+              <button
+                onClick={startGame}
+                style={{
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '12px 32px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                START GAME
+              </button>
+            )}
+            {gameStarted && (
+              <p style={{ color: '#f59e0b' }}>Game starting...</p>
+            )}
           </div>
         </div>
       )}

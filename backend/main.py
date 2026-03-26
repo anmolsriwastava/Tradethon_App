@@ -113,6 +113,13 @@ def get_leaderboard(room_id: str):
         return {"error": "Room not found"}
     return {"leaderboard": game._get_leaderboard()}
 
+@app.get("/room/{room_id}/players")
+def get_players(room_id: str):
+    game = room_manager.get_room(room_id)
+    if not game:
+        return {"error": "Room not found"}
+    players_list = [{"id": pid, "name": p["name"]} for pid, p in game.players.items()]
+    return {"players": players_list}
 
 # --- WebSocket ---
 @app.websocket("/ws/{room_id}/{player_id}")
