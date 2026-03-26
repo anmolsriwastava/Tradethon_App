@@ -10,12 +10,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
 
-  
-      
-      localStorage.setItem('playerName', email.split('@')[0])
-      navigate('/lobby')
-      
-    async function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
