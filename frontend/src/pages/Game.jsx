@@ -32,7 +32,7 @@ export default function Game() {
   const [joining, setJoining] = useState(true)
   const [joinError, setJoinError] = useState('')
 
-  // Step 1: Get player name (from localStorage or prompt)
+  // Step 1: Get player name from localStorage or prompt
   useEffect(() => {
     const storedName = localStorage.getItem('playerName')
     if (storedName) {
@@ -52,7 +52,6 @@ export default function Game() {
   useEffect(() => {
     if (!playerName || !roomId) return
     if (actualPlayerId) {
-      // Already have a playerId, no need to join
       setJoining(false)
       return
     }
@@ -63,7 +62,15 @@ export default function Game() {
         const response = await axios.post(`${API}/room/${roomId}/join`, {
           player_name: playerName
         })
-        setActualPlayerId(response.data.player_id)
+        const newPlayerId = response.data.player_id
+        setActualPlayerId(newPlayerId)
+        
+        // Immediately fetch players list after joining
+        const playersRes = await axios.get(`${API}/room/${roomId}/players`)
+        if (playersRes.data && playersRes.data.players) {
+          setPlayers(playersRes.data.players)
+        }
+        
         setJoining(false)
       } catch (err) {
         console.error('Join error:', err)
@@ -88,7 +95,7 @@ export default function Game() {
     }
     ws.onerror = (e) => console.log('WebSocket error:', e)
     
-    // Poll for updates
+    // Poll for updates every 2 seconds
     const pollInterval = setInterval(async () => {
       try {
         const bookRes = await axios.get(`${API}/room/${roomId}/book`)

@@ -12,21 +12,17 @@ export default function Lobby() {
   const [duration, setDuration] = useState(120)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [createdRoomId, setCreatedRoomId] = useState('')
-  const [showCopySuccess, setShowCopySuccess] = useState(false)
 
   async function createAndJoin() {
     if (!playerName.trim()) return setError('Enter your name')
     setLoading(true)
     setError('')
-    setCreatedRoomId('')
     try {
       const room = await axios.post(`${API}/room/create`, {
         num_bots: numBots,
         round_duration: duration
       })
       const newRoomId = room.data.room_id
-      setCreatedRoomId(newRoomId)
       
       const player = await axios.post(`${API}/room/${newRoomId}/join`, {
         player_name: playerName
@@ -52,13 +48,6 @@ export default function Lobby() {
       setError('Failed to join room')
     }
     setLoading(false)
-  }
-
-  function copyRoomLink() {
-    const link = `${window.location.origin}/game/${createdRoomId}`
-    navigator.clipboard.writeText(link)
-    setShowCopySuccess(true)
-    setTimeout(() => setShowCopySuccess(false), 2000)
   }
 
   return (
@@ -168,33 +157,6 @@ export default function Lobby() {
           >
             {loading ? 'CREATING...' : 'CREATE & JOIN'}
           </button>
-          
-          {/* Copy Room Link Button - Shows after room creation */}
-          {createdRoomId && (
-            <div style={{ marginTop: '12px' }}>
-              <button
-                onClick={copyRoomLink}
-                style={{
-                  width: '100%',
-                  background: '#334155',
-                  color: '#e2e8f0',
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '10px',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                📋 COPY ROOM LINK
-              </button>
-              {showCopySuccess && (
-                <p style={{ color: '#10b981', fontSize: '12px', marginTop: '8px', textAlign: 'center' }}>
-                  ✓ Link copied! Share with friends
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Join Room Section */}
