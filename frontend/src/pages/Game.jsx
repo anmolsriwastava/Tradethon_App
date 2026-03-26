@@ -25,26 +25,24 @@ export default function Game() {
   const [gameStarted, setGameStarted] = useState(false)
   const [myPnl, setMyPnl] = useState(0)
   const [myTrades, setMyTrades] = useState(0)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
-
-    const wsUrl = import.meta.env.VITE_API_URL
-        ? import.meta.env.VITE_API_URL.replace('https://', 'wss://').replace('http://', 'ws://')
-        : 'ws://127.0.0.1:8000'
-    
-    const ws = new WebSocket(`${wsUrl}/ws/${roomId}/${playerId}`)
-                   
+    const ws = new WebSocket(`wss://tradethon-backend.onrender.com/ws/${roomId}/${playerId}`)
     wsRef.current = ws
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data)
       handleEvent(data)
     }
+    ws.onerror = (e) => console.log('WebSocket error:', e)
+    
     const pollInterval = setInterval(async () => {
       try {
         const res = await axios.get(`${API}/room/${roomId}/book`)
         setBook(res.data)
       } catch (e) {}
     }, 3000)
+    
     return () => {
       ws.close()
       clearInterval(pollInterval)
@@ -96,76 +94,155 @@ export default function Game() {
     try {
       await axios.post(`${API}/room/${roomId}/start`)
       setGameStarted(true)
-      setGameState('active')
     } catch (e) {
       console.log('Start error:', e)
     }
   }
 
+  function copyRoomLink() {
+    const link = `${window.location.origin}/game/${roomId}`
+    navigator.clipboard.writeText(link)
+    setCopySuccess(true)
+    setTimeout(() => setCopySuccess(false), 2000)
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0f',
-      color: '#e0e0e0',
-      fontFamily: 'monospace',
-      padding: 20
+      background: '#0a0c15',
+      padding: '24px'
     }}>
+      {/* Header */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
-        borderBottom: '1px solid #222',
-        paddingBottom: 12
+        marginBottom: '24px',
+        paddingBottom: '16px',
+        borderBottom: '1px solid #1f2937'
       }}>
-        <h2 style={{ color: '#00ff88', margin: 0 }}>TRADETHON</h2>
-        <div style={{ display: 'flex', gap: 20, fontSize: 12, color: '#888' }}>
-          <span>ROOM: <span style={{ color: '#fff' }}>{roomId}</span></span>
-          <span>ID: <span style={{ color: '#fff' }}>{playerId}</span></span>
-          <span>PnL: <span style={{ color: myPnl >= 0 ? '#00ff88' : '#ff4444', fontWeight: 'bold' }}>{myPnl >= 0 ? '+' : ''}{myPnl.toFixed(2)}</span></span>
-          <span>TRADES: <span style={{ color: '#fff' }}>{myTrades}</span></span>
-          <span style={{ color: gameState === 'active' ? '#00ff88' : '#ffaa00' }}>
-            ● {gameState.toUpperCase()}
+        <h1 style={{
+          fontSize: '24px',
+          fontWeight: '700',
+          background: 'linear-gradient(135deg, #60a5fa, #3b82f6)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          margin: 0
+        }}>
+          TRADETHON
+        </h1>
+        <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#94a3b8' }}>
+          <span>ROOM: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{roomId}</span></span>
+          <span>ID: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{playerId}</span></span>
+          <span>PnL: <span style={{ color: myPnl >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+            {myPnl >= 0 ? '+' : ''}{myPnl.toFixed(2)}
+          </span></span>
+          <span>TRADES: <span style={{ color: '#f1f5f9', fontWeight: '500' }}>{myTrades}</span></span>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: gameState === 'active' ? '#10b981' : '#f59e0b'
+          }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }}></span>
+            {gameState.toUpperCase()}
           </span>
         </div>
       </div>
 
+      {/* Waiting Screen */}
       {gameState === 'waiting' && (
-        <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <p style={{ color: '#888', marginBottom: 24 }}>
-            Share room code <span style={{ color: '#00ff88' }}>{roomId}</span> with friends
-          </p>
-          {!gameStarted && (
+        <div style={{ textAlign: 'center', marginTop: '80px' }}>
+          <div style={{
+            background: '#111827',
+            borderRadius: '16px',
+            border: '1px solid #1f2937',
+            maxWidth: '500px',
+            margin: '0 auto',
+            padding: '40px'
+          }}>
+            <p style={{ color: '#94a3b8', marginBottom: '16px' }}>
+              Share this link with friends to join:
+            </p>
+            
+            <div style={{
+              background: '#0f172a',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              marginBottom: '24px',
+              wordBreak: 'break-all',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              color: '#3b82f6'
+            }}>
+              {`${window.location.origin}/game/${roomId}`}
+            </div>
+            
             <button
-              onClick={startGame}
+              onClick={copyRoomLink}
               style={{
-                background: '#00ff88',
-                color: '#0a0a0f',
+                background: '#3b82f6',
+                color: 'white',
                 border: 'none',
-                borderRadius: 8,
-                padding: '14px 40px',
-                fontSize: 16,
-                fontWeight: 'bold',
+                borderRadius: '10px',
+                padding: '10px 20px',
+                fontSize: '14px',
+                fontWeight: '600',
                 cursor: 'pointer',
-                fontFamily: 'monospace'
+                marginBottom: '24px'
               }}
             >
-              START GAME
+              📋 COPY LINK
             </button>
-          )}
-          {gameStarted && (
-            <p style={{ color: '#ffaa00' }}>Starting...</p>
-          )}
+            
+            {copySuccess && (
+              <p style={{ color: '#10b981', fontSize: '13px', marginBottom: '24px' }}>
+                ✓ Link copied to clipboard!
+              </p>
+            )}
+            
+            <div style={{
+              borderTop: '1px solid #1f2937',
+              paddingTop: '24px',
+              marginTop: '8px'
+            }}>
+              <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+                Room Code: <span style={{ color: '#f1f5f9', fontFamily: 'monospace' }}>{roomId}</span>
+              </p>
+              
+              {!gameStarted && (
+                <button
+                  onClick={startGame}
+                  style={{
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '12px 32px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  START GAME
+                </button>
+              )}
+              {gameStarted && (
+                <p style={{ color: '#f59e0b' }}>Starting game...</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
+      {/* Active Game */}
       {gameState === 'active' && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 16
+          gap: '20px'
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <PuzzleDisplay
               puzzle={puzzle}
               timeLeft={timeLeft}
@@ -174,40 +251,44 @@ export default function Game() {
             />
             {roundResult && (
               <div style={{
-                background: '#111',
-                border: '1px solid #333',
-                borderRadius: 8,
-                padding: 16
+                background: '#111827',
+                borderRadius: '16px',
+                border: '1px solid #1f2937',
+                padding: '20px'
               }}>
-                <p style={{ color: '#ffaa00', marginBottom: 8 }}>ROUND RESULT</p>
-                <p style={{ color: '#fff', fontSize: 18 }}>
-                  True Value: <span style={{ color: '#00ff88' }}>{roundResult.true_value}</span>
+                <p style={{ color: '#f59e0b', fontSize: '11px', fontWeight: '600', marginBottom: '12px' }}>
+                  ROUND RESULT
                 </p>
-                <p style={{ color: '#888', fontSize: 12, marginTop: 8 }}>
+                <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>
+                  True Value: <span style={{ color: '#10b981' }}>{roundResult.true_value}</span>
+                </p>
+                <p style={{ color: '#64748b', fontSize: '12px' }}>
                   {roundResult.hint_2}
                 </p>
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <OrderBook book={book} />
             <div style={{
-              background: '#111',
-              border: '1px solid #222',
-              borderRadius: 8,
-              padding: 12
+              background: '#111827',
+              borderRadius: '16px',
+              border: '1px solid #1f2937',
+              padding: '16px'
             }}>
-              <p style={{ color: '#888', fontSize: 11, marginBottom: 8 }}>EVENTS</p>
+              <p style={{ color: '#64748b', fontSize: '11px', fontWeight: '600', marginBottom: '12px' }}>
+                EVENTS
+              </p>
               {messages.map((m, i) => (
-                <p key={i} style={{ color: '#555', fontSize: 11, margin: '2px 0' }}>
+                <p key={i} style={{ color: '#475569', fontSize: '11px', margin: '4px 0', fontFamily: 'monospace' }}>
                   › {m}
                 </p>
               ))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <TradePanel
               roomId={roomId}
               playerId={playerId}
@@ -221,11 +302,21 @@ export default function Game() {
         </div>
       )}
 
+      {/* Game Finished */}
       {gameState === 'finished' && (
-        <div style={{ textAlign: 'center', marginTop: 80 }}>
-          <h2 style={{ color: '#00ff88' }}>GAME OVER</h2>
-          <p style={{ color: '#888' }}>Redirecting to results...</p>
-          <Leaderboard leaderboard={leaderboard} />
+        <div style={{ textAlign: 'center', marginTop: '80px' }}>
+          <div style={{
+            background: '#111827',
+            borderRadius: '16px',
+            border: '1px solid #1f2937',
+            maxWidth: '400px',
+            margin: '0 auto',
+            padding: '40px'
+          }}>
+            <h2 style={{ color: '#10b981', marginBottom: '16px' }}>GAME OVER</h2>
+            <p style={{ color: '#94a3b8', marginBottom: '24px' }}>Redirecting to results...</p>
+            <Leaderboard leaderboard={leaderboard} />
+          </div>
         </div>
       )}
     </div>
