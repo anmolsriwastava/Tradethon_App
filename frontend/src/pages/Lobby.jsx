@@ -12,21 +12,26 @@ export default function Lobby() {
   const [duration, setDuration] = useState(120)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [createdRoomId, setCreatedRoomId] = useState('')
+  const [showCopySuccess, setShowCopySuccess] = useState(false)
 
   async function createAndJoin() {
     if (!playerName.trim()) return setError('Enter your name')
     setLoading(true)
     setError('')
+    setCreatedRoomId('')
     try {
       const room = await axios.post(`${API}/room/create`, {
         num_bots: numBots,
         round_duration: duration
       })
-      const roomId = room.data.room_id
-      const player = await axios.post(`${API}/room/${roomId}/join`, {
+      const newRoomId = room.data.room_id
+      setCreatedRoomId(newRoomId)
+      
+      const player = await axios.post(`${API}/room/${newRoomId}/join`, {
         player_name: playerName
       })
-      navigate(`/game/${roomId}/${player.data.player_id}`)
+      navigate(`/game/${newRoomId}/${player.data.player_id}`)
     } catch (e) {
       setError('Failed to create room')
     }
@@ -49,22 +54,40 @@ export default function Lobby() {
     setLoading(false)
   }
 
+  function copyRoomLink() {
+    const link = `${window.location.origin}/game/${createdRoomId}`
+    navigator.clipboard.writeText(link)
+    setShowCopySuccess(true)
+    setTimeout(() => setShowCopySuccess(false), 2000)
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0f',
-      color: '#e0e0e0',
+      background: '#0f172a',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: 'monospace'
+      padding: '20px',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      <div style={{ width: 420, padding: 40 }}>
-
-        <h1 style={{ color: '#00ff88', fontSize: 32, marginBottom: 4 }}>
-          TRADETHON
+      <div style={{
+        maxWidth: '500px',
+        width: '100%',
+        background: '#1e293b',
+        borderRadius: '24px',
+        padding: '40px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+      }}>
+        <h1 style={{
+          fontSize: '36px',
+          fontWeight: '700',
+          color: '#3b82f6',
+          marginBottom: '8px'
+        }}>
+          Tradethon
         </h1>
-        <p style={{ color: '#888', marginBottom: 40 }}>
+        <p style={{ color: '#94a3b8', marginBottom: '32px', fontSize: '14px' }}>
           Quantitative Trading Simulation
         </p>
 
@@ -72,104 +95,154 @@ export default function Lobby() {
           placeholder="Your Name"
           value={playerName}
           onChange={e => setPlayerName(e.target.value)}
-          style={inputStyle}
+          style={{
+            width: '100%',
+            background: '#0f172a',
+            border: '1px solid #334155',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            color: '#f1f5f9',
+            fontSize: '14px',
+            marginBottom: '20px',
+            outline: 'none'
+          }}
         />
 
+        {/* Create Room Section */}
         <div style={{
-          background: '#111',
-          border: '1px solid #222',
-          borderRadius: 8,
-          padding: 20,
-          marginBottom: 16
+          background: '#0f172a',
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '20px'
         }}>
-          <p style={{ color: '#00ff88', marginBottom: 12, fontSize: 13 }}>
+          <p style={{ color: '#3b82f6', fontWeight: '600', fontSize: '13px', marginBottom: '16px' }}>
             CREATE NEW ROOM
           </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: '#888' }}>BOTS</label>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>BOTS</label>
               <input
                 type="number"
                 value={numBots}
                 onChange={e => setNumBots(Number(e.target.value))}
-                style={{ ...inputStyle, marginBottom: 0 }}
+                style={{
+                  width: '100%',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  color: '#f1f5f9'
+                }}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ fontSize: 11, color: '#888' }}>SECONDS/ROUND</label>
+              <label style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '4px' }}>SECONDS / ROUND</label>
               <input
                 type="number"
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
-                style={{ ...inputStyle, marginBottom: 0 }}
+                style={{
+                  width: '100%',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  color: '#f1f5f9'
+                }}
               />
             </div>
           </div>
           <button
             onClick={createAndJoin}
             disabled={loading}
-            style={btnStyle('#00ff88', '#0a0a0f')}
+            style={{
+              width: '100%',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '12px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
           >
             {loading ? 'CREATING...' : 'CREATE & JOIN'}
           </button>
+          
+          {/* Copy Room Link Button - Shows after room creation */}
+          {createdRoomId && (
+            <div style={{ marginTop: '12px' }}>
+              <button
+                onClick={copyRoomLink}
+                style={{
+                  width: '100%',
+                  background: '#334155',
+                  color: '#e2e8f0',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                📋 COPY ROOM LINK
+              </button>
+              {showCopySuccess && (
+                <p style={{ color: '#10b981', fontSize: '12px', marginTop: '8px', textAlign: 'center' }}>
+                  ✓ Link copied! Share with friends
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Join Room Section */}
         <div style={{
-          background: '#111',
-          border: '1px solid #222',
-          borderRadius: 8,
-          padding: 20,
-          marginBottom: 16
+          background: '#0f172a',
+          borderRadius: '16px',
+          padding: '20px'
         }}>
-          <p style={{ color: '#4488ff', marginBottom: 12, fontSize: 13 }}>
+          <p style={{ color: '#60a5fa', fontWeight: '600', fontSize: '13px', marginBottom: '16px' }}>
             JOIN EXISTING ROOM
           </p>
           <input
             placeholder="Room ID (e.g. 5C8D184D)"
             value={roomId}
             onChange={e => setRoomId(e.target.value.toUpperCase())}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              background: '#0f172a',
+              border: '1px solid #334155',
+              borderRadius: '10px',
+              padding: '12px',
+              color: '#f1f5f9',
+              marginBottom: '16px',
+              outline: 'none'
+            }}
           />
           <button
             onClick={joinRoom}
             disabled={loading}
-            style={btnStyle('#4488ff', '#0a0a0f')}
+            style={{
+              width: '100%',
+              background: '#334155',
+              color: '#e2e8f0',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '12px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
           >
             {loading ? 'JOINING...' : 'JOIN ROOM'}
           </button>
         </div>
 
         {error && (
-          <p style={{ color: '#ff4444', fontSize: 13 }}>{error}</p>
+          <p style={{ color: '#ef4444', fontSize: '13px', textAlign: 'center', marginTop: '16px' }}>{error}</p>
         )}
-
       </div>
     </div>
   )
 }
-
-const inputStyle = {
-  width: '100%',
-  background: '#1a1a2e',
-  border: '1px solid #333',
-  borderRadius: 6,
-  padding: '10px 12px',
-  color: '#e0e0e0',
-  fontSize: 14,
-  marginBottom: 12,
-  boxSizing: 'border-box',
-  fontFamily: 'monospace'
-}
-
-const btnStyle = (bg, color) => ({
-  width: '100%',
-  background: bg,
-  color: color,
-  border: 'none',
-  borderRadius: 6,
-  padding: '12px',
-  fontSize: 14,
-  fontWeight: 'bold',
-  cursor: 'pointer',
-  fontFamily: 'monospace'
-})
