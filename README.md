@@ -38,21 +38,4 @@ A real-time multiplayer trading simulation where players solve probability puzzl
 
 ---
 
-## 🚀 Quick Start
 
-```bash
-# Clone
-git clone https://github.com/anmolsriwastava/Tradethon_App.git
-cd Tradethon_App
-
-# Backend
-cd backend
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-python -m uvicorn main:app --reload
-
-# Frontend (new terminal)
-cd frontend
-npm install
-npm run dev
