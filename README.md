@@ -1,4 +1,4 @@
-# QuantTrade Sim 📈 
+# QuantDrill Sim 📈 
 
 **A High-Fidelity Quantitative Trading Simulation & Competitive Platform**
 
