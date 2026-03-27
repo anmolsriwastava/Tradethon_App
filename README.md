@@ -2,7 +2,7 @@
 
 **Live:** [https://quantdrill.onrender.com](https://quantdrill.onrender.com)
 
-A real-time multiplayer trading simulation where players solve probability puzzles and trade against AI bots. Inspired by IMC Prosperity and Optiver Tradethon.
+A real-time multiplayer trading simulation where players solve probability and Expected Value Puzzles and get the fair market price and trade against other players and bots (Created to provide liquidity in market). 
 
 ---
 
